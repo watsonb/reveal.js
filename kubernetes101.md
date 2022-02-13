@@ -69,6 +69,8 @@
 
 ## Quick(ish) History
 
+* I tend to believe people appreciate things more when they know more about the
+  origin story, so...
 * What sparked `k8s` development and how did it grow into this thing we have
   today?
 * In short, **Google** wanted to compete with **Amazon** in PaaS.
@@ -103,7 +105,7 @@
   * RedHat (Openshift/OKD)
   * Pivotal Cloud Foundry
   * IBM
-* But Google kind of wanted to work _with_ (these **competitors**) to make something
+* But Google kind of wanted to work _with_ these **competitors** to make something
   that would change the game
 
 
@@ -173,8 +175,27 @@
   * Rancher
 
 
+## Kubernetes Architecture and Deployment
 
-## Hands-on Lab
+In otherwords, your experience deploying, maintaining, upgrading, and
+operating a Kubernetes cluster will largely depend on the distribution you
+are using and the tooling they provide to fulfill these objectives.
+
+There is tons of flexibility regarding all of the internals, for example:
+
+* container runtime (runc, crun, docker, etc.)
+* internal software defined networking implentation
+* and more
+
+A distribution will typically have an opinion on what works best and guide you
+down the road of getting the cluster up and running with these opinions in mind.
+
+> Opinionated can seem bad (especially if you don't agree with it) but it
+> certainly wrangles in the seemingly infinite variability at play here
+
+
+
+## Hands-on Lab (Minikube)
 
 * Kubernetes is hard, right?
 * What if it didn't have to be?
@@ -189,7 +210,7 @@
 > Super **NOT** a production Kubernetes distro!
 
 
-## Hands-on Lab
+## Hands-on Lab (Minikube)
 
 * Nearly all instructions will be taken (nearly verbaitm) from [k8s.io](https://minikube.sigs.k8s.io/docs/start/)
 
@@ -206,7 +227,7 @@ minikube kubectl -- get po -A
 ```
 
 
-## Hands-on Lab
+## Hands-on Lab (Minikube)
 
 ```bash
 # let's save ourselves some keystrokes (we're lazy)
@@ -233,7 +254,7 @@ kubectl get services hello-minikube
 Go back and check your dashboard now.
 
 
-## Hands-on Lab
+## Hands-on Lab (Minikube)
 
 ```bash
 # let's have a look at what we actually deployed
@@ -253,11 +274,189 @@ kubectl config view
 ```
 
 
-## Hands-on Lab
+## Hands-on Lab (Minikube)
 
 ```bash
 # alright, enough fun, let's cleanup
 docker ps  # what's running before cleanup?
 minikube delete --all
 docker ps  # what's running after cleanup?
+```
+
+
+
+## Hands-on Lab (AWX)
+
+* Some of you use Ansible, right? Right!?!?
+* RedHat provides products named Tower, Automation Platform, and others that
+  enable you to expose your playbooks in various ways
+  * Web GUI to run playbooks
+  * REST API to launch playbooks
+  * And more...
+* Like other RedHat models, AWX is the free upstream open source version of
+  their commercial (supported) offering named Tower.
+* How does this relate to Kubernetes?
+  * Well there are Ansible modules for managing `k8s` clusters, but...
+  * Recent versions of Tower are deployed via the `awx-operator` into a `k8s`
+    cluster
+
+> You can still deploy AWX via Docker on Linux, but `k8s` is "the way" now.
+
+
+## Hands-on Lab (AWX)
+
+* Fire up `minikube` again
+
+```bash
+minikube start --cpus=4 --memory=6g --addons=ingress
+
+# verify some stuff
+$ minikube kubectl -- get nodes
+NAME       STATUS   ROLES                  AGE    VERSION
+minikube   Ready    control-plane,master   113s   v1.22.2
+
+$ minikube kubectl -- get pods -A
+NAMESPACE       NAME                                        READY   STATUS      RESTARTS   AGE
+ingress-nginx   ingress-nginx-admission-create--1-kk67h     0/1     Completed   0          2m1s
+ingress-nginx   ingress-nginx-admission-patch--1-7mp2r      0/1     Completed   1          2m1s
+ingress-nginx   ingress-nginx-controller-69bdbc4d57-bmwg8   1/1     Running     0          2m
+kube-system     coredns-78fcd69978-q7nmx                    1/1     Running     0          2m
+kube-system     etcd-minikube                               1/1     Running     0          2m12s
+kube-system     kube-apiserver-minikube                     1/1     Running     0          2m16s
+kube-system     kube-controller-manager-minikube            1/1     Running     0          2m12s
+kube-system     kube-proxy-5mmnw                            1/1     Running     0          2m1s
+kube-system     kube-scheduler-minikube                     1/1     Running     0          2m15s
+kube-system     storage-provisioner
+```
+
+
+## Hands-on Lab (AWX)
+
+We need to clone the Git project for `awx-operator`
+
+```bash
+mkdir -p ~/workspace/github/ansible
+cd ~/workspace/github/ansible
+git clone https://github.com/ansible/awx-operator.git
+cd awx-operator
+git checkout 0.16.1  # most recent release
+```
+
+
+## Hands-on Lab (AWX)
+
+Kubernetes deployments are managed by `namespaces`, so we're going to set an
+enviornment variable with our namespace that we can then refer to throughout.
+
+```bash
+export NAMESPACE=my-namespace
+```
+
+> I had to install the `kubectl` tool for the following `make` command to work
+
+```bash
+cd ~/Downloads
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+cd ~/workspace/github/ansible
+```
+
+Now we make the deployment via the included Makefile:
+
+```bash
+make deploy
+```
+
+After a little bit, you should see the operator running in minikube:
+
+```bash
+$ kubectl get pods -n $NAMESPACE
+NAME                                               READY   STATUS    RESTARTS   AGE
+awx-operator-controller-manager-66ccd8f997-rhd4z   2/2     Running   0          11s
+```
+
+
+## Hands-on Lab (AWX)
+
+Let's set the default namespace for `kubectl` so we don't have to keep typing
+it all the time:
+
+```bash
+$ kubectl config set-context --current --namespace=$NAMESPACE
+
+Now make a text file:
+vim demo.yml
+```
+
+And paste in the following:
+
+```yaml
+---
+apiVersion: awx.ansible.com/v1beta1
+kind: AWX
+metadata:
+  name: awx-demo
+spec:
+  service_type: nodeport
+```
+
+
+## Hands-on Lab (AWX)
+
+Now we'll use `kubectl` to create an AWX instance in the `minikube` cluster
+
+```bash
+$ kubectl apply -f awx-demo.yml
+awx.awx.ansible.com/awx-demo created
+```
+
+It may take a few minutes to fully deploy.  You can check operator logs to see
+the progress:
+
+```bash
+$ kubectl logs -f deployments/awx-operator-controller-manager -c awx-manager
+# keen eyes will notice this is actually an Ansible playbook running here
+```
+
+You should also see new resources and services:
+
+```bash
+$ kubectl get pods -l "app.kubernetes.io/managed-by=awx-operator"
+NAME                        READY   STATUS    RESTARTS   AGE
+awx-demo-77d96f88d5-pnhr8   4/4     Running   0          3m24s
+awx-demo-postgres-0         1/1     Running   0          3m34s
+
+$ kubectl get svc -l "app.kubernetes.io/managed-by=awx-operator"
+NAME                TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+awx-demo-postgres   ClusterIP   None           <none>        5432/TCP       4m4s
+awx-demo-service    NodePort    10.109.40.38   <none>        80:31006/TCP   3m56s
+```
+
+
+## Hands-on Lab (AWX)
+
+* Let's kick the tires.
+* First print out the admin password secret
+
+```bash
+$ kubectl get secret awx-demo-admin-password -o jsonpath="{.data.password}" | base64 --decode
+yDL2Cx5Za94g9MvBP6B73nzVLlmfgPjR  # <--- your value will be different here
+```
+
+That secret is the password we'll use to login with the account: `admin`
+
+Let's launch the service in a browser:
+
+```bash
+$ minikube service awx-demo-service --url -n $NAMESPACE
+http://<ip address>:<port>
+```
+
+Open that address in browser and login with the admin account and the password
+secret you retrieved.
+
+When you're done poking around, cleanup:
+
+```bash
+minikube delete --all
 ```

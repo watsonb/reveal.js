@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Dinohead Containers</title>
+
+		<link rel="stylesheet" href="dist/reveal.css">
+		<link rel="stylesheet" href="dist/theme/blood.css" id="theme">
+
+        <link rel="stylesheet" href="plugin/highlight/monokai.css">
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<div class="slides">
+
+                <!-- Use external markdown resource, separate slides by three newlines; vertical slides by two newlines -->
+                <section data-markdown="kubernetes101.md" data-separator="^\n\n\n" data-separator-vertical="^\n\n"></section>
+
+            </div>
+		</div>
+
+		<script src="dist/reveal.js"></script>
+        <script src="plugin/markdown/markdown.js"></script>
+        <script src="plugin/highlight/highlight.js"></script>
+        <script src="plugin/notes/notes.js"></script>
+
+		<script>
+
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+                slideNumber: true,
+
+                // The "normal" size of the presentation, aspect ratio will
+                // be preserved when the presentation is scaled to fit different
+                // resolutions. Can be specified using percentage units.
+                width: 1920,
+                height: 1080,
+
+                // Factor of the display size that should remain empty around
+                // the content
+                margin: 0.04,
+
+                // Bounds for smallest/largest possible scale to apply to content
+                minScale: 0.2,
+                maxScale: 2.0,
+
+				plugins: [ RevealMarkdown, RevealHighlight, RevealNotes ]
+			});
+
+		</script>
+
+	</body>
+</html>
